@@ -1,19 +1,19 @@
 """
     django-reversion helpers
     ~~~~~~~~~~~~~~~~~~~~~~~~
-    
+
     A number of useful helper functions to automate common tasks.
-    
+
     Used google-diff-match-patch [1] if installed, fallback to difflib.
     For installing use e.g. the unofficial package:
-    
+
         pip install diff-match-patch
-    
+
     [1] http://code.google.com/p/google-diff-match-patch/
 """
 
-
 import difflib
+from htmldiff.htmldiff import diffStrings
 
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
@@ -122,14 +122,17 @@ def unified_diff(a, b, n=3, lineterm='\n'):
 
 def html_diff(value1, value2, cleanup=SEMANTIC):
     """
-    Generates a diff used google-diff-match-patch is exist or ndiff as fallback
-    
-    The cleanup parameter can be SEMANTIC, EFFICIENCY or None to clean up the diff
-    for greater human readibility.
+    Generates a visual diff. Use htmldiff, or google-diff-match-patch, or difflib
+    (in that order of preference).
+
+    The cleanup parameter is for diff-match-patch and can be SEMANTIC, EFFICIENCY or None.
     """
     value1 = force_unicode(value1)
     value2 = force_unicode(value2)
-    if google_diff_match_patch:
+    if diffStrings:
+        # Generate diff using htmldiff.diffStrings
+        html = diffStrings(value1, value2, accurate_mode=True)
+    elif google_diff_match_patch:
         # Generate the diff with google-diff-match-patch
         diff = dmp.diff_main(value1, value2)
         if cleanup == SEMANTIC:
@@ -184,10 +187,8 @@ def patch_admin(model, admin_site=None, AdminClass=None):
     try:
         ModelAdmin = admin_site._registry[model].__class__
     except KeyError:
-        raise NotRegistered("The model {model} has not been registered with the admin site.".format(
-            model = model,
-            ))
-        # Unregister existing admin class.
+        raise NotRegistered("The model {model} has not been registered with the admin site.".format(model=model))
+    # Unregister existing admin class.
     admin_site.unregister(model)
     # Register patched admin class.
     if not AdminClass:
