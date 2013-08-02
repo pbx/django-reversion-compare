@@ -22,11 +22,10 @@ from django.utils.text import capfirst
 from django.utils.translation import ugettext as _
 
 from reversion.admin import VersionAdmin
-from reversion.models import Version, VERSION_TYPE_CHOICES, VERSION_CHANGE, \
-    has_int_pk
+from reversion.models import VERSION_TYPE_CHOICES, has_int_pk
 
 from reversion_compare.forms import SelectDiffForm
-from reversion_compare.helpers import html_diff, compare_queryset
+from reversion_compare.helpers import html_diff
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 
