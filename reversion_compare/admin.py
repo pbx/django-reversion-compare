@@ -3,7 +3,7 @@
 """
     admin
     ~~~~~
-    
+
     Admin extensions for django-reversion-compare
 
     :copyleft: 2012 by the django-reversion-compare team, see AUTHORS for more details.
@@ -79,7 +79,7 @@ class CompareObject(object):
 
     def __eq__(self, other):
         assert self.field.get_internal_type() != "ManyToManyField"
-        
+
         if self.value != other.value:
             return False
 
@@ -108,7 +108,7 @@ class CompareObject(object):
         if self.has_int_pk:
             ids = [int(v) for v in self.value] # is: version.field_dict[field.name]
 
-        # get instance of reversion.models.Revision(): A group of related object versions. 
+        # get instance of reversion.models.Revision(): A group of related object versions.
         old_revision = self.version.revision
 
         # Get the related model of the current field:
@@ -205,13 +205,13 @@ class CompareObjects(object):
 
         # is a related field (ForeignKey, ManyToManyField etc.)
         self.is_related = self.field.rel is not None
-        
+
         if not self.is_related:
             self.follow = None
         elif self.field_name in self.adapter.follow:
             self.follow = True
         else:
-            self.follow = False          
+            self.follow = False
 
         self.compare_obj1 = CompareObject(field, field_name, obj, version1, self.has_int_pk, self.adapter)
         self.compare_obj2 = CompareObject(field, field_name, obj, version2, self.has_int_pk, self.adapter)
@@ -221,7 +221,7 @@ class CompareObjects(object):
 
     def changed(self):
         """ return True if at least one field has changed values. """
-        
+
         if self.field.get_internal_type() == "ManyToManyField": # FIXME!
             info = self.get_m2m_change_info()
             keys = (
@@ -230,9 +230,9 @@ class CompareObjects(object):
             )
             for key in keys:
                 if info[key]:
-                    return True 
-            return False 
-        
+                    return True
+            return False
+
         return self.compare_obj1 != self.compare_obj2
 
     def _get_result(self, compare_obj, func_name):
@@ -260,7 +260,7 @@ class CompareObjects(object):
     def get_m2m_change_info(self):
         if self.M2M_CHANGE_INFO is not None:
             return self.M2M_CHANGE_INFO
-        
+
         m2m_data1, m2m_data2 = self.get_many_to_many()
 
         result1, missing_objects1, missing_ids1 = m2m_data1
@@ -393,21 +393,21 @@ class CompareObjects(object):
 class BaseCompareVersionAdmin(VersionAdmin):
     """
     Enhanced version of VersionAdmin with a flexible compare version API.
-    
+
     You can define own method to compare fields in two ways (in this order):
-    
+
         Create a method for a field via the field name, e.g.:
             "compare_%s" % field_name
-            
+
         Create a method for every field by his internal type
             "compare_%s" % field.get_internal_type()
-        
+
         see: https://docs.djangoproject.com/en/1.4/howto/custom-model-fields/#django.db.models.Field.get_internal_type
-        
+
     If no method defined it would build a simple ndiff from repr().
-       
+
     example:
-    
+
     ----------------------------------------------------------------------------
     class MyModel(models.Model):
         date_created = models.DateTimeField(auto_now_add=True)
@@ -415,7 +415,7 @@ class BaseCompareVersionAdmin(VersionAdmin):
         user = models.ForeignKey(User)
         content = models.TextField()
         sub_text = models.ForeignKey(FooBar)
-    
+
     class MyModelAdmin(CompareVersionAdmin):
         def compare_DateTimeField(self, obj, version1, version2, value1, value2):
             ''' compare all model datetime model field in ISO format '''
@@ -423,15 +423,15 @@ class BaseCompareVersionAdmin(VersionAdmin):
             date2 = value2.isoformat(" ")
             html = html_diff(date1, date2)
             return html
-        
+
         def compare_sub_text(self, obj, version1, version2, value1, value2):
             ''' field_name example '''
             return "%s -> %s" % (value1, value2)
-            
+
     ----------------------------------------------------------------------------
     """
 
-    # Template file used for the compare view:    
+    # Template file used for the compare view:
     compare_template = "reversion-compare/compare.html"
 
     # list/tuple of field names for the compare view. Set to None for all existing fields
@@ -440,10 +440,10 @@ class BaseCompareVersionAdmin(VersionAdmin):
     # list/tuple of field names to exclude from compare view.
     compare_exclude = None
 
-    # change template from django-reversion to add compare selection form: 
+    # change template from django-reversion to add compare selection form:
     object_history_template = "reversion-compare/object_history.html"
 
-    # sort from new to old as default, see: https://github.com/etianen/django-reversion/issues/77 
+    # sort from new to old as default, see: https://github.com/etianen/django-reversion/issues/77
     history_latest_first = True
 
     def get_urls(self):
@@ -545,9 +545,9 @@ class BaseCompareVersionAdmin(VersionAdmin):
     def compare(self, obj, version1, version2):
         """
         Create a generic html diff from the obj between version1 and version2:
-        
+
             A diff of every changes field values.
-        
+
         This method should be overwritten, to create a nice diff view
         coordinated with the model.
         """
@@ -618,8 +618,11 @@ class BaseCompareVersionAdmin(VersionAdmin):
         version2 = get_object_or_404(queryset, pk=version_id2)
 
         if version_id1 > version_id2:
-            # Compare always the newest one with the older one 
+            # Compare always the newest one with the older one
             version1, version2 = version2, version1
+
+        # Find any intervening versions, for better change summary, omitting initial version
+        revision_comments = [item.revision.comment for item in queryset.filter(pk__gt=version_id1, pk__lte=version_id2) if item.revision.comment]
 
         compare_data, has_unfollowed_fields = self.compare(obj, version1, version2)
 
@@ -635,6 +638,7 @@ class BaseCompareVersionAdmin(VersionAdmin):
             "has_unfollowed_fields": has_unfollowed_fields,
             "version1": version1,
             "version2": version2,
+            "revision_comments": revision_comments,
             "changelist_url": reverse("%s:%s_%s_changelist" % (self.admin_site.name, opts.app_label, opts.module_name)),
             "change_url": reverse("%s:%s_%s_change" % (self.admin_site.name, opts.app_label, opts.module_name), args=(quote(obj.pk),)),
             "original": obj,
@@ -690,7 +694,7 @@ class CompareVersionAdmin(BaseCompareVersionAdmin):
         value1 = obj_compare.value1
         value2 = obj_compare.value2
 
-        # FIXME: Needed to not get 'The 'file' attribute has no file associated with it.' 
+        # FIXME: Needed to not get 'The 'file' attribute has no file associated with it.'
         if value1:
             value1 = value1.url
         else:
