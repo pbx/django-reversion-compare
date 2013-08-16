@@ -554,8 +554,8 @@ class BaseCompareVersionAdmin(VersionAdmin):
 
         # Create a list of all normal fields and append many-to-many fields
         fields = [field for field in obj._meta.fields]
-        # There was logic at this point to pull in M2M fields from the concrete model,
-        # but it requires Django 1.4 and so we are doing without it for now.
+        concrete_model = obj._meta.concrete_model
+        fields += concrete_model._meta.many_to_many
 
         has_unfollowed_fields = False
 
